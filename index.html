@@ -1,32 +1,7 @@
-<?php
-include 'db.php';
-
-// 🔧 Helper: Get component details for an assembly
-function getComponentDetails($conn, $assembly_id) {
-  $details = [];
-  $res = $conn->query("SELECT p.item_name, p.image_path FROM product_components pc JOIN products p ON pc.component_id = p.id WHERE pc.assembly_id = $assembly_id");
-  while ($row = $res->fetch_assoc()) {
-    $details[] = $row;
-  }
-  return $details;
-}
-
-$where = "WHERE 1";
-if (!empty($_GET['search'])) {
-  $search = $conn->real_escape_string($_GET['search']);
-  $where .= " AND (item_name LIKE '%$search%' OR item_code LIKE '%$search%')";
-}
-if (!empty($_GET['category'])) {
-  $cat = $conn->real_escape_string($_GET['category']);
-  $where .= " AND category = '$cat'";
-}
-
-$res = $conn->query("SELECT * FROM products $where ORDER BY item_name ASC");
-?>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Product Catalog</title>
   <link rel="stylesheet" href="assets/style.css">
   <style>
@@ -234,57 +209,44 @@ $res = $conn->query("SELECT * FROM products $where ORDER BY item_name ASC");
 <body>
   <h1>📦 Product Catalog</h1>
 
-  <!-- 🔍 Filter Form -->
-  <form method="GET">
-    <input type="text" name="search" placeholder="Search by name or code" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
-    <select name="category">
-      <option value="">All Categories</option>
-      <option value="assembly" <?= ($_GET['category'] ?? '') === 'assembly' ? 'selected' : '' ?>>Assembly</option>
-      <option value="component" <?= ($_GET['category'] ?? '') === 'component' ? 'selected' : '' ?>>Component</option>
+  <!-- 🔍 Filter Form (non-functional in static HTML) -->
+  <form>
+    <input type="text" placeholder="Search by name or code">
+    <select>
+      <option>All Categories</option>
+      <option>Assembly</option>
+      <option>Component</option>
     </select>
     <button type="submit">🔍 Filter</button>
-    <?php if (!empty($_GET['search']) || !empty($_GET['category'])): ?>
-      <button type="button" class="clear-btn" onclick="window.location.href='index.php'">🧹 Clear</button>
-    <?php endif; ?>
+    <button type="button" class="clear-btn">🧹 Clear</button>
   </form>
 
-  <!-- 🧾 Product Grid -->
+  <!-- 🧾 Static Product Grid -->
   <div class="grid">
-    <?php
-    if ($res->num_rows > 0) {
-      while ($row = $res->fetch_assoc()) {
-        $components = $row['category'] === 'assembly' ? getComponentDetails($conn, $row['id']) : [];
-
-        echo "<div class='card'>
-        <div class='img-wrapper'>
-          <img src='{$row['image_path']}' alt='{$row['item_name']}' loading='lazy'>
-          <div class='full-size-preview'>
-            <img src='{$row['image_path']}' alt='Full view of {$row['item_name']}'>
-          </div>
+    <div class="card">
+      <div class="img-wrapper">
+        <img src="assets/sample1.jpg" alt="Sample Item" loading="lazy">
+        <div class="full-size-preview">
+          <img src="assets/sample1.jpg" alt="Full view of Sample Item">
         </div>
-        <h3>{$row['item_name']}</h3>
-        <p><strong>Code:</strong> {$row['item_code']}</p>
-        <p><strong>Category:</strong> " . ucfirst($row['category']) . "</p>
-        <p><strong>Price:</strong> ₹{$row['price']}</p>";
-
-        if (!empty($components)) {
-          echo "<div class='components'>🔗 Includes: ";
-          foreach ($components as $index => $comp) {
-            echo "<span class='component-tooltip'>{$comp['item_name']}
-                    <div class='tooltip-img'><img src='{$comp['image_path']}' alt='{$comp['item_name']}'></div>
-                  </span>";
-            if ($index < count($components) - 1) echo ", ";
-          }
-          echo "</div>";
-          echo "<button class='breakdown-btn' onclick='openModal(" . json_encode($components) . ", \"" . addslashes($row['item_name']) . "\")'>🔍 View Breakdown</button>";
-        }
-
-        echo "</div>";
-      }
-    } else {
-      echo "<p>No products found.</p>";
-    }
-    ?>
+      </div>
+      <h3>Sample Item</h3>
+      <p><strong>Code:</strong> ITEM001</p>
+      <p><strong>Category:</strong> Assembly</p>
+      <p><strong>Price:</strong> ₹999</p>
+      <div class="components">🔗 Includes:
+        <span class="component-tooltip">Component A
+          <div class="tooltip-img"><img src="assets/sample2.jpg" alt="Component A"></div>
+        </span>,
+        <span class="component-tooltip">Component B
+          <div class="tooltip-img"><img src="assets/sample3.jpg" alt="Component B"></div>
+        </span>
+      </div>
+      <button class="breakdown-btn" onclick="openModal([
+        { image_path: 'assets/sample2.jpg', item_name: 'Component A' },
+        { image_path: 'assets/sample3.jpg', item_name: 'Component B' }
+      ], 'Sample Item')">🔍 View Breakdown</button>
+    </div>
   </div>
 
   <!-- 🪟 Modal Popup -->
@@ -293,7 +255,8 @@ $res = $conn->query("SELECT * FROM products $where ORDER BY item_name ASC");
       <span class="close-btn" onclick="closeModal()">×</span>
       <h2 id="modalTitle">Assembly Breakdown</h2>
       <div class="modal-grid" id="modalGrid"></div>
-      </div>
+    </div>
+  </div>
 
   <!-- 🧠 Scripts -->
   <script>
@@ -314,7 +277,6 @@ $res = $conn->query("SELECT * FROM products $where ORDER BY item_name ASC");
       document.getElementById('breakdownModal').style.display = 'none';
     }
 
-    // Optional: Close modal when clicking outside
     window.onclick = function(event) {
       const modal = document.getElementById('breakdownModal');
       if (event.target === modal) {
